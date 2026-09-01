@@ -205,7 +205,7 @@ function App() {
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-bold text-slate-800 leading-tight">
-                Cortemel
+                CutAurea
               </h1>
               <p className="text-[11px] text-slate-500 leading-tight hidden sm:block">
                 Optimización de cortes de melamina por voz
