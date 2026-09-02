@@ -22,6 +22,46 @@ function wordToNumber(text: string): number | null {
   return null;
 }
 
+const SPOKEN_NUMBER_WORDS =
+  'cero|uno|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|dieciséis|diecisiete|dieciocho|diecinueve|veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos';
+
+function spokenNumberToNumber(text: string): number | null {
+  const normalized = text.toLowerCase().trim();
+  const numeric = wordToNumber(normalized);
+  if (numeric !== null) return numeric;
+
+  const words = normalized.split(/\s+/);
+  let total = 0;
+  let current = 0;
+  const hundreds: Record<string, number> = {
+    cien: 100,
+    ciento: 100,
+    doscientos: 200,
+    trescientos: 300,
+    cuatrocientos: 400,
+    quinientos: 500,
+    seiscientos: 600,
+    setecientos: 700,
+    ochocientos: 800,
+    novecientos: 900,
+  };
+
+  for (const word of words) {
+    if (word === 'mil') {
+      total += (current || 1) * 1000;
+      current = 0;
+    } else if (hundreds[word] !== undefined) {
+      current += hundreds[word];
+    } else if (NUMBER_WORDS[word] !== undefined) {
+      current += NUMBER_WORDS[word];
+    } else {
+      return null;
+    }
+  }
+
+  return total + current || null;
+}
+
 /**
  * Parses voice commands for adding pieces.
  * Expected format: "[label] de [width] x [height] cantidad [quantity]"
@@ -32,7 +72,12 @@ function wordToNumber(text: string): number | null {
  *   "estante 600 x 300 cantidad tres"
  */
 export function parseVoiceCommand(text: string): VoiceCommandResult {
-  const lower = text.toLowerCase().trim();
+  const lower = text
+    .toLowerCase()
+    .replace(/[.,]/g, ' ')
+    .replace(/\bpor\s+el\b/g, 'por')
+    .replace(/\s+/g, ' ')
+    .trim();
   const rawText = text;
 
   // Extract quantity: "cantidad 2", "cantidad dos", "cantidad de 2"
@@ -58,15 +103,18 @@ export function parseVoiceCommand(text: string): VoiceCommandResult {
     .trim();
 
   // Extract dimensions: "600 x 300", "600 por 300", "600 equis 300"
-  const dimMatch = withoutQty.match(/(\d+)\s*(?:x|por|equis|multiplicado por)\s*(\d+)/i);
+  const numberPattern = `(?:\\d+|${SPOKEN_NUMBER_WORDS}(?:\\s+(?:${SPOKEN_NUMBER_WORDS}|y))*)`;
+  const dimMatch = withoutQty.match(
+    new RegExp(`(${numberPattern})\\s*(?:x|\\*|por|equis|multiplicado\\s+por)\\s*(${numberPattern})`, 'i')
+  );
   if (!dimMatch) {
     return { type: 'unknown', rawText };
   }
 
-  const width = parseInt(dimMatch[1], 10);
-  const height = parseInt(dimMatch[2], 10);
+  const width = spokenNumberToNumber(dimMatch[1]);
+  const height = spokenNumberToNumber(dimMatch[2]);
 
-  if (width <= 0 || height <= 0) {
+  if (width === null || height === null || width <= 0 || height <= 0) {
     return { type: 'unknown', rawText };
   }
 

@@ -22,8 +22,8 @@ import { VoiceControl } from '@/components/VoiceControl';
 import { StatsPanel } from '@/components/StatsPanel';
 
 const DEFAULT_CONFIG: BoardConfig = {
-  width: 2440,
-  height: 1220,
+  width: 1830,
+  height: 2730,
   kerf: 3,
 };
 
@@ -38,6 +38,7 @@ function App() {
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [result, setResult] = useState<CutResult | null>(null);
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
+  const [voiceFeedbackError, setVoiceFeedbackError] = useState(false);
   const [projects, setProjects] = useState<CutProject[]>([]);
   const [showProjects, setShowProjects] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -46,14 +47,15 @@ function App() {
   const [projectName, setProjectName] = useState('Proyecto sin nombre');
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showFeedback = useCallback((msg: string) => {
+  const showFeedback = useCallback((msg: string, isError = false) => {
     setVoiceFeedback(msg);
+    setVoiceFeedbackError(isError);
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     feedbackTimerRef.current = setTimeout(() => setVoiceFeedback(null), VOICE_FEEDBACK_TIMEOUT);
   }, []);
 
   const handleVoiceCommand = useCallback(
-    (text: string) => {
+    (text: string): boolean => {
       const cmd = parseVoiceCommand(text);
 
       if (cmd.type === 'add' && cmd.piece?.width && cmd.piece?.height) {
@@ -68,9 +70,12 @@ function App() {
         showFeedback(
           `Agregada: ${newPiece.label} ${newPiece.width}x${newPiece.height}mm (${newPiece.quantity}u)`
         );
+        return true;
       } else if (text.trim().length > 0) {
-        showFeedback(`No se reconoció: "${text}"`);
+        showFeedback(`No se reconoció: "${text}"`, true);
       }
+
+      return false;
     },
     [showFeedback]
   );
@@ -312,7 +317,13 @@ function App() {
                 onClear={voice.clearTranscript}
               />
               {voiceFeedback && (
-                <div className="mt-3 p-2.5 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-700 font-medium animate-fade-in">
+                <div
+                  className={`mt-3 p-2.5 rounded-lg text-xs font-medium animate-fade-in ${
+                    voiceFeedbackError
+                      ? 'bg-red-50 border border-red-200 text-red-700'
+                      : 'bg-teal-50 border border-teal-200 text-teal-700'
+                  }`}
+                >
                   {voiceFeedback}
                 </div>
               )}

@@ -52,7 +52,7 @@ export interface VoiceState {
   supported: boolean;
 }
 
-export function useVoiceRecognition(onFinalResult: (text: string) => void) {
+export function useVoiceRecognition(onFinalResult: (text: string) => boolean | void) {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -100,9 +100,9 @@ export function useVoiceRecognition(onFinalResult: (text: string) => void) {
       }
 
       if (final) {
-        setTranscript((prev) => (prev ? prev + ' ' : '') + final.trim());
-        setInterimTranscript('');
         onFinalRef.current(final.trim());
+        setTranscript('');
+        setInterimTranscript('');
       } else {
         setInterimTranscript(interim);
       }
